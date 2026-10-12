@@ -1,0 +1,37 @@
+name: Sync Fork
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.SYNC_TOKEN || secrets.GITHUB_TOKEN }}
+
+      - name: 配置 Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: 添加上游仓库
+        run: git remote add upstream https://github.com/maillab/cloud-mail.git || true
+
+      - name: 获取上游更新
+        run: git fetch upstream
+
+      - name: 合并上游 main
+        run: git merge upstream/main --no-edit
+
+      - name: 推送到 origin main
+        run: git push origin main
