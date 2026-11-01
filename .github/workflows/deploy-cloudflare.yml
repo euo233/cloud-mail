@@ -12,6 +12,8 @@ jobs:
   Deploy-cloud-mail:
     name: 🏗️ Build and Deploy
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     env:
       NAME: ${{ secrets.NAME || vars.NAME || 'cloud-mail' }}
@@ -48,8 +50,23 @@ jobs:
           cache: "pnpm"
           cache-dependency-path: "./mail-worker/pnpm-lock.yaml"
 
+      - name: 🔄 更新锁文件 / Refresh lockfile
+        working-directory: ./mail-worker
+        run: |
+          pnpm install --lockfile-only --no-frozen-lockfile --ignore-scripts
+          if ! git diff --quiet pnpm-lock.yaml; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add pnpm-lock.yaml
+            git commit -m "chore: auto-refresh pnpm-lock.yaml [skip ci]"
+            git push
+            echo "::notice::pnpm-lock.yaml 已自动更新并提交。"
+          else
+            echo "锁文件无需更新。"
+          fi
+
       - name: 📦 安装依赖 / Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --frozen-lockfile
         working-directory: ./mail-worker
 
       - name: 📡 禁用 Wrangler 遥测 / Disable wrangler telemetry
